@@ -149,6 +149,186 @@ summary_school = pd.DataFrame({"Number of students": no_students_per_sch,
                                 })
 summary_school
 ```
+
+Seeing patterns in the data is made easier by generating charts. Scatterplots could show relationships between school budget and overall passing rates; school size and overall passing rates; school size and school budget; and school budget and budget per student.
+
+```python
+# scatterplot of budget vs overall passing rate
+x = tot_sch_budget / 1000000
+y = pct_sch_overall_passers
+plt.scatter(x, y)
+plt.xlabel("Budget (mln USD)")
+plt.ylabel("Proportion of Overall Passers (%)")
+
+# scatterplot of school size vs overall passing rate
+x = no_students_per_sch
+y = pct_sch_overall_passers
+plt.scatter(x, y)
+plt.xlabel("Number of Students")
+plt.ylabel("Proportion of Overall Passers (%)")
+
+# scatterplot of school size vs budget
+x = no_students_per_sch
+y = tot_sch_budget
+plt.scatter(x, y)
+plt.xlabel("Number of Students")
+plt.ylabel("Budget (USD)")
+
+# scatterplot of student budget vs total school budget
+x = per_student_budget
+y = tot_sch_budget
+plt.scatter(x, y)
+plt.xlabel("Budget per student (USD)")
+plt.ylabel("School budget (USD)")
+```
+
+Insights from data visualisation can be used to enhance one's capacity to generate insights from the raw data. However, it is also important to take a deep dive into the data to understand the patterns more fully. Common characteristics of schools that performed similarly could provide additional information. In this case, the schools were ranked according to overall performance; the top five and the bottom five schools were put into separate tables.
+
+```python
+# sort the schools by overall passing rate
+sch_passers_sorted = summary_school.sort_values("Proportion of Overall Passers (%)", ascending = False)
+
+# display top five schools
+sch_passers_sorted.head()
+
+# display bottom five schools
+sch_passers_sorted.tail()
+```
+
+To get the school performance per grade, the data was first filtered by grade. 
+
+```python
+# filter the data by grade
+grade_09 = school_data_complete.loc[school_data_complete["grade"] == "9th"]
+grade_10 = school_data_complete.loc[school_data_complete["grade"] == "10th"]
+grade_11 = school_data_complete.loc[school_data_complete["grade"] == "11th"]
+grade_12 = school_data_complete.loc[school_data_complete["grade"] == "12th"]
+```
+
+Performance per school in the Math exam was then  displayed by grade. A dataframe was generated to display the performance of each grade per school.
+
+```python
+# get average score for math for each grade by school
+math_09_ave = round((grade_09.groupby("school_name")["math_score"].mean()),2)
+math_10_ave = round((grade_10.groupby("school_name")["math_score"].mean()),2)
+math_11_ave = round((grade_11.groupby("school_name")["math_score"].mean()),2)
+math_12_ave = round((grade_12.groupby("school_name")["math_score"].mean()),2)
+
+# merge series to dataframe
+math_df = pd.DataFrame({"9th Grade Math Score (%)": math_09_ave, "10th Grade Math Score (%)": math_10_ave, "11th Grade Math Score (%)": math_11_ave, "12th Grade Math Score (%)": math_12_ave})                                 
+math_df
+```
+
+A boxplot visualising the student's performance in the Math exam was then be generated. The graph could provide insights about the distribution of scores in the district and to determine if there were outliers in the data (i.e., students who performed extraordinarily well or bad that could skew the data).
+
+```python
+# plot the Math average scores by grade
+fig, ax = plt.subplots()
+plt.boxplot([math_09_ave, math_10_ave, math_11_ave, math_12_ave])
+plt.xlabel("Grade")
+plt.ylabel("Average Math Score (%)")
+ax.set_xticklabels(labels =[9,10,11,12])
+```
+
+The same process of summarising and visualising scores was implemented for the Reading test.
+
+```python
+# get average score for reading for each grade by school
+rdg_09_ave = round((grade_09.groupby("school_name")["reading_score"].mean()),2)
+rdg_10_ave = round((grade_10.groupby("school_name")["reading_score"].mean()),2)
+rdg_11_ave = round((grade_11.groupby("school_name")["reading_score"].mean()),2)
+rdg_12_ave = round((grade_12.groupby("school_name")["reading_score"].mean()),2)
+
+# merge series to dataframe
+rdg_df = pd.DataFrame({"9th Grade Reading Score (%)": rdg_09_ave, "10th Grade Reading Score (%)": rdg_10_ave, "11th Grade Reading Score (%)": rdg_11_ave, "12th Grade Reading Score (%)": rdg_12_ave})                                 
+rdg_df
+
+# plot the Reading average scores by grade
+fig, ax = plt.subplots()
+plt.boxplot([rdg_09_ave, rdg_10_ave, rdg_11_ave, rdg_12_ave])
+plt.xlabel("Grade")
+plt.ylabel("Average Reading Score (%)")
+ax.set_xticklabels(labels =[9,10,11,12])
+```
+
 ### Scores by School Spending
+Because the budget per student were already available, it was possible to group the schools into categories based on arbitrarily set budget ranges. In this case, the schools were grouped into four classes. 
+
+```python
+# Slice the dataframe to include only average scores and passing rates by budget bracket
+budget_rates = sch_passers_sorted.loc[:, ["Number of students",
+                                          "Budget per Student (USD)", 
+                                          "Average Math Score (%)", "Average Reading Score (%)", 
+                                          "Proportion of Math Passers (%)", "Proportion of Reading Passers (%)",
+                                          "Proportion of Overall Passers (%)"]]
+
+# Sample bins.
+spending_bins = [0, 585, 615, 645, 675]
+group_names = ["<$585", "$585–615", "$615–645", "$645–675"]
+
+# Bin the data by the school spending per student
+budget_rates["Budget Bracket (USD)"] = pd.cut(budget_rates["Budget per Student (USD)"], bins = spending_bins, right = False, labels = group_names)
+
+# Create a group based on the bins
+budget_rate_grped = budget_rates.groupby("Budget Bracket (USD)")
+```
+
+To calculate the average scores per budget class, it is important to incorporate weights because the schools had different population sizes. To get the weighted averages, the function `wavg` was used. The weight used was the `Number of students`.
+
+```python
+# weighted averages for reading and math scores
+def wavg(df,ave_name,weight_name):
+    d = df[ave_name]
+    w = df[weight_name]
+    return (d * w).sum() / w.sum()
+
+grp_budget_means_mathscore = round(budget_rate_grped.apply(wavg, "Average Math Score (%)", "Number of students"), 2)
+grp_budget_means_rdgscore = round(budget_rate_grped.apply(wavg, "Average Reading Score (%)", "Number of students"), 2)
+```
+
+For the same reason, it was also important to consider school size in calculating the passing rates.
+
+```python
+# proportion of students who passed the math and the reading exams, and both
+def proportion(df,proportion_name,weight_name):
+    d = df[proportion_name]
+    w = df[weight_name]
+    return (d * w).sum() / w.sum() # where (d * w).sum() is the number of students who passed per bracket
+                                   # where w.sum() is the total number of students per bracket
+
+grp_budget_means_mathrate = round(budget_rate_grped.apply(proportion, "Proportion of Math Passers (%)", "Number of students"), 2)
+grp_budget_means_rdgrate = round(budget_rate_grped.apply(proportion, "Proportion of Reading Passers (%)", "Number of students"), 2)
+grp_budget_means_overallrate = round(budget_rate_grped.apply(proportion, "Proportion of Overall Passers (%)", "Number of students"),2)
+```
+
+After generating these statistics, it was just a matter of putting them together in a dataframe.
+
+```python
+# create dataframe using weighted averages (accounting for different sizes of budget classes)
+budget_comparison = pd.DataFrame({"Wtd Average Math Score (%)": grp_budget_means_mathscore,
+                                  "Wtd Average Reading Score (%)": grp_budget_means_rdgscore,
+                                  "Proportion of Math Passers (%)": grp_budget_means_mathrate,
+                                  "Proportion of Reading Passers (%)": grp_budget_means_rdgrate,
+                                  "Proportion of Overall Passers (%)": grp_budget_means_overallrate})
+budget_comparison
+```
+
+The relationship between school budget per student and student performance in the standardised tests could be interesting, but this could not easily be seen in the dataframe. Hence a matrix of correlation coefficients was generated.
+
+```python
+# Calculate correlation coefficients
+correlation = round((budget_rates.corr()),2) # correlation coefficient
+correlation
+```
+
+The coefficients of determination (correlation coefficient squared) is a measure of how much an independent variable (e.g., budget per student) could explain the variance in a dependent variable (e.g., performance indicators). Additional insights could be generated from this statistic.
+
+```python
+# How much of the variation is explained by the different factors?
+corr_squared = round(correlation**2,2) # coefficient of determination
+corr_squared
+```
+
+
 ### Scores by School Size
 ### Scores by School Type
