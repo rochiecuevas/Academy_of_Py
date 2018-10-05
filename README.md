@@ -424,7 +424,7 @@ grp_type_means_rdgrate = round(sch_type.apply(proportion, "Proportion of Reading
 grp_type_means_overallrate = round(sch_type.apply(proportion, "Proportion of Overall Passers (%)", "Number of students"),2)
 ```
 
-to summarise results, the statistics were put in a dataframe.
+To summarise results, the statistics were put in a dataframe.
 
 ```python
 # create dataframe using weighted averages (accounting for different sizes of school types)
@@ -436,3 +436,8 @@ sch_type_comparison = pd.DataFrame({"Wtd Average Math Score (%)": grp_type_means
 
 sch_type_comparison
 ```
+
+## Resources
+The code for the function of weighted averages and weighted proportions was adapted from the one found [here](http://pbpython.com/weighted-average.html).
+
+The definition of overall passing (i.e., pass both exams) was adopted from the standards of the [California High School Exit Examination (CAHSEE)](http://www.ppic.org/content/pubs/report/R_612JBR.pdf).
