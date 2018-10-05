@@ -30,14 +30,14 @@ school_data_complete = pd.merge(student_data, school_data, how="left", on=["scho
 
 ## Data Analyses
 ### District Overview
-To characterise the PySchool District, the data was first grouped by school.
+To characterise the PySchool District, the data was first grouped by `school name`.
 
 ```python
 # group the data by school
 school_grped = school_data_complete.groupby("school_name")
 ```
 
-Then, the basic information about the district was determined. 
+Then, the basic information about the district was determined, including the number of schools, the student population size, the district education budget, and the average scores for the two tests. 
 
 ```python
 # descriptive statistics
@@ -80,7 +80,75 @@ summary_district = pd.DataFrame({"Number of schools": [no_schools],
 summary_district
 ```
 
+To check if there was a difference in performance of students between Math and Reading tests, a Welch t-test was used.
+
+```python
+# Comparing results using Welch test
+score_math_v_rdg = stats.ttest_ind(a = school_data_complete["math_score"], 
+                                   b = school_data_complete["reading_score"], 
+                                   equal_var=False)
+
+rate_math_v_rdg = stats.ttest_ind(a = school_data_complete["math_score"] >= 70, 
+                                  b = school_data_complete["reading_score"] >= 70, 
+                                   equal_var=False)
+
+print("ave scores: " + str(score_math_v_rdg), "\nproportion of passers: " + str(rate_math_v_rdg))
+```
+
+
 ### School Overview
+After getting the district overview, the next step was to generate information about each school. To do so, the schools were grouped by `school name` and by `type`.
+
+```python
+# group the data by school name and type
+school_grped2 = school_data_complete.groupby(["school_name","type"]) # group schools by name
+```
+
+The basic information per school were then generated, including the number of students, the budget, the budget per student, and the average scores for each subject. Getting the average scores per subject involved dividing the sum of scores by the number of students per school. 
+
+```python
+# descriptive statistics
+no_students_per_sch = school_grped2["school_name"].count() # number of students per school
+tot_dist_sch_budget = school_grped2["budget"].mean() # total education budget per school
+per_student_budget = tot_dist_sch_budget / no_students_per_sch
+sch_ave_math_score = round((school_grped2["math_score"].sum() / no_students_per_sch),2) # school average math score
+sch_ave_rdg_score = round((school_grped2["reading_score"].sum() / no_students_per_sch),2) # school average reading score
+```
+
+To determine the passing rate for each school per exam, the number of students who passed each exam was divided by the number of students per school. The values were then converted to percentages.
+
+```python
+sch_math_passers = school_grped2["math_score"].apply(lambda x: x[x >=70].count()) # number of math passers per school
+pct_sch_math_passers = round(((sch_math_passers * 100) / no_students_per_sch),2) # proportion of math passers per school
+
+sch_rdg_passers = school_grped2["reading_score"].apply(lambda x: x[x >=70].count()) # number of reading passers per school
+pct_sch_rdg_passers = round(((sch_rdg_passers * 100) / no_students_per_sch),2) # proportion of reading passers per school
+```
+
+To then determine the overall passing rate per school, the number of students who passed both exams were divided by the number of students per school. The value was converted to percentage.
+
+```python
+# filter raw data for students who passed both math and reading tests
+sch_passers = school_data_complete.loc[(school_data_complete["math_score"] >= 70) & (school_data_complete["reading_score"] >= 70)]
+sch_passers_grped = sch_passers.groupby(["school_name"])
+pct_sch_overall_passers = round(((sch_passers_grped["student_name"].count() / no_students_per_sch) * 100),2)
+```
+
+A summary of results were generated per school by putting all the statistics into a dataframe.
+
+```python
+# summary per school
+summary_school = pd.DataFrame({"Number of students": no_students_per_sch,
+                               "Budget (USD)": tot_dist_sch_budget.map("{:,.2f}".format),
+                               "Budget per Student (USD)": per_student_budget,
+                               "Average Math Score (%)": sch_ave_math_score,
+                               "Average Reading Score (%)": sch_ave_rdg_score,
+                               "Proportion of Math Passers (%)": pct_sch_math_passers,
+                               "Proportion of Reading Passers (%)": pct_sch_rdg_passers,
+                               "Proportion of Overall Passers (%)": pct_sch_overall_passers
+                                })
+summary_school
+```
 ### Scores by School Spending
 ### Scores by School Size
 ### Scores by School Type
