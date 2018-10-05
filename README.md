@@ -5,7 +5,7 @@ Standardised tests are designed to evaluate a school's performance in two key in
 ## Getting Started
 Python modules Panda, NumPy, SciPy, and MatPlotLib were used for data analyses and visualisation.
 
-```
+```python
 # Dependencies and Setup
 import pandas as pd
 import numpy as np
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 The data came from two files: `schools_complete.csv` and `students_complete.csv`.
 
-```
+```python
 # Data sources
 school_data_to_load = "schools_complete.csv"
 student_data_to_load = "students_complete.csv"
@@ -32,14 +32,14 @@ school_data_complete = pd.merge(student_data, school_data, how="left", on=["scho
 ### District Overview
 To characterise the PySchool District, the data was first grouped by school.
 
-```
+```python
 # group the data by school
 school_grped = school_data_complete.groupby("school_name")
 ```
 
 Then, the basic information about the district was determined. 
 
-```
+```python
 # descriptive statistics
 no_schools = len(school_grped) # number of schools in the district
 no_students = school_grped["school_name"].count().sum() # number of students in the district
@@ -50,7 +50,7 @@ dist_ave_rdg_score = round((school_grped["reading_score"].sum().sum() / no_stude
 
 To determine the proportion of students who passed per subject, the number of students whose grades were at least 70% for each subject were counted and then divided by the number of students in the district. The values were then converted to percentages. 
 
-```
+```python
 # proportion of students who passed?
 pct_math_passers = round(((len(school_data_complete.loc[school_data_complete["math_score"] >= 70]) / no_students) * 100),2)
 pct_rdg_passers = round(((len(school_data_complete.loc[school_data_complete["reading_score"] >= 70]) / no_students) * 100),2)
@@ -58,7 +58,7 @@ pct_rdg_passers = round(((len(school_data_complete.loc[school_data_complete["rea
 
 To get the overall passing rate, the number of students who passed both Math and Reading exams were counted and then divided by the number of students in the district.
 
-```
+```python
 # number of students who passed both math and reading tests (overall passing rate)
 both_passers = len(school_data_complete.loc[(school_data_complete["reading_score"] >= 70) & (school_data_complete["math_score"] >= 70)])
 pct_both_passers = round(((both_passers / no_students) * 100),2)
@@ -66,7 +66,7 @@ pct_both_passers = round(((both_passers / no_students) * 100),2)
 
 A dataframe was generated to put all these district-level statistics together.
 
-```
+```python
 # summary for the district
 summary_district = pd.DataFrame({"Number of schools": [no_schools],
                                  "Number of students": "{:,}".format(no_students),
