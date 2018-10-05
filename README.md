@@ -195,6 +195,9 @@ sch_passers_sorted.head()
 sch_passers_sorted.tail()
 ```
 
+### School Performance by Grade
+It was interesting to see if standardised exam scores were different across the four grades because if some grades were performing particularly better or worse, the school district officers could implement district-level improvements for grades that were not faring well or to adopt best practices from schools which were performing better than the others. 
+
 To get the school performance per grade, the data was first filtered by grade. 
 
 ```python
@@ -205,7 +208,7 @@ grade_11 = school_data_complete.loc[school_data_complete["grade"] == "11th"]
 grade_12 = school_data_complete.loc[school_data_complete["grade"] == "12th"]
 ```
 
-Performance per school in the Math exam was then  displayed by grade. A dataframe was generated to display the performance of each grade per school.
+Performance per school in the Math exam was then displayed by grade. A dataframe was generated to display the performance of each grade per school.
 
 ```python
 # get average score for math for each grade by school
@@ -219,7 +222,7 @@ math_df = pd.DataFrame({"9th Grade Math Score (%)": math_09_ave, "10th Grade Mat
 math_df
 ```
 
-A boxplot visualising the student's performance in the Math exam was then be generated. The graph could provide insights about the distribution of scores in the district and to determine if there were outliers in the data (i.e., students who performed extraordinarily well or bad that could skew the data).
+A boxplot visualising the student's performance in the Math exam was then be generated. The graph provided insights about the distribution of scores in the district and to determine if there were outliers in the data (i.e., students who performed extraordinarily well or bad that could skew the data).
 
 ```python
 # plot the Math average scores by grade
@@ -252,7 +255,9 @@ ax.set_xticklabels(labels =[9,10,11,12])
 ```
 
 ### Scores by School Spending
-Because the budget per student were already available, it was possible to group the schools into categories based on arbitrarily set budget ranges. In this case, the schools were grouped into four classes. 
+An earlier scatterplot seemed to suggest that lower school budgets were related with better school performance. It is unwise to generate insights from this prematurely because it is important to develop a deeper understanding about the relationship of school budgets and school performance before making recommendations. Since school budget and the number of students were correlated and could confound subsequent analysis, each school's `budget per student` potentially was a better independent variable to use. 
+
+Because the budget per student was calculated previously, it was possible to group the schools into categories based on arbitrarily set budget ranges. In this case, the schools were grouped into four classes. 
 
 ```python
 # Slice the dataframe to include only average scores and passing rates by budget bracket
@@ -273,7 +278,7 @@ budget_rates["Budget Bracket (USD)"] = pd.cut(budget_rates["Budget per Student (
 budget_rate_grped = budget_rates.groupby("Budget Bracket (USD)")
 ```
 
-To calculate the average scores per budget class, it is important to incorporate weights because the schools had different population sizes. To get the weighted averages, the function `wavg` was used. The weight used was the `Number of students`.
+To calculate the average scores per budget class, it is important to incorporate weights because the school budget classes had different population sizes. To get the weighted averages, the function `wavg` was used. The weight used was the `Number of students`.
 
 ```python
 # weighted averages for reading and math scores
@@ -286,7 +291,7 @@ grp_budget_means_mathscore = round(budget_rate_grped.apply(wavg, "Average Math S
 grp_budget_means_rdgscore = round(budget_rate_grped.apply(wavg, "Average Reading Score (%)", "Number of students"), 2)
 ```
 
-For the same reason, it was also important to consider school size in calculating the passing rates.
+For the same reason, it was also important to consider school budget class size in calculating the passing rates. The function `proportion` was used for the calculations.
 
 ```python
 # proportion of students who passed the math and the reading exams, and both
@@ -329,6 +334,105 @@ corr_squared = round(correlation**2,2) # coefficient of determination
 corr_squared
 ```
 
-
 ### Scores by School Size
+The schools were grouped into three classes based on size.
+
+```python
+# Slice the dataframe to include only average scores and passing rates by school size
+sch_size = sch_passers_sorted.loc[:, ["Number of students", 
+                                      "Average Math Score (%)", "Average Reading Score (%)", 
+                                      "Proportion of Math Passers (%)", "Proportion of Reading Passers (%)",
+                                      "Proportion of Overall Passers (%)"]]
+
+# Sample bins
+size_bins = [0, 1000, 2000, 5000]
+group_names = ["Small (<1000)", "Medium (1000-2000)", "Large (2000-5000)"]
+
+# Bin the data by the school size
+sch_size["Size Class"] = pd.cut(sch_size["Number of students"], bins = size_bins, right = False, labels = group_names)
+
+# Group the schools based on size
+sch_size_grped = sch_size.groupby("Size Class")
+```
+
+Determining the relationship between school performance (average scores and passing rates) and school size required weighted averages again because it is important to consider the differences in school population per size category. The weight used here was `number of students`.
+
+```python 
+# weighted averages for reading, math, and overall
+def wavg(df,ave_name,weight_name):
+    d = df[ave_name]
+    w = df[weight_name]
+    return (d * w).sum() / w.sum()
+
+grp_size_means_mathscore = round(sch_size_grped.apply(wavg, "Average Math Score (%)", "Number of students"), 2)
+grp_size_means_rdgscore = round(sch_size_grped.apply(wavg, "Average Reading Score (%)", "Number of students"), 2)
+
+# proportion of students who passed the math and the reading exams, and both
+def proportion(df,proportion_name,weight_name):
+    d = df[proportion_name]
+    w = df[weight_name]
+    return (d * w).sum() / w.sum() # where (d * w).sum() is the number of students who passed per bracket
+                                   # where w.sum() is the total number of students per bracket
+
+grp_size_means_mathrate = round(sch_size_grped.apply(proportion, "Proportion of Math Passers (%)", "Number of students"), 2)
+grp_size_means_rdgrate = round(sch_size_grped.apply(proportion, "Proportion of Reading Passers (%)", "Number of students"), 2)
+grp_size_means_overallrate = round(sch_size_grped.apply(proportion, "Proportion of Overall Passers (%)", "Number of students"),2)
+```
+
+The statistics generated were then placed in a dataframe.
+
+```python
+# create dataframe using weighted averages (accounting for different sizes of schools)
+sch_size_comparison = pd.DataFrame({"Wtd Average Math Score (%)": grp_size_means_mathscore,
+                                  "Wtd Average Reading Score (%)": grp_size_means_rdgscore,
+                                  "Proportion of Math Passers (%)": grp_size_means_mathrate,
+                                  "Proportion of Reading Passers (%)": grp_size_means_rdgrate,
+                                  "Proportion of Overall Passers (%)": grp_size_means_overallrate})
+
+sch_size_comparison
+```
+
 ### Scores by School Type
+There are two school types in this district. To compare the two types, the schools were first grouped into either "charter" or "district".
+
+```python
+# Group the data by school type
+sch_type = sch_passers_sorted.groupby('type')
+```
+
+An initial look at the dataset indicated that charter schools tended to have smaller sizes than district schools. Hence, it was important to consider weighting the average scores and the passing rates per school type.
+
+```python
+# weighted averages for reading, math, and overall
+def wavg(df,ave_name,weight_name):
+    d = df[ave_name]
+    w = df[weight_name]
+    return (d * w).sum() / w.sum()
+
+grp_type_means_mathscore = round(sch_type.apply(wavg, "Average Math Score (%)", "Number of students"), 2)
+grp_type_means_rdgscore = round(sch_type.apply(wavg, "Average Reading Score (%)", "Number of students"), 2)
+
+# proportion of students who passed the math and the reading exams, and both
+def proportion(df,proportion_name,weight_name):
+    d = df[proportion_name]
+    w = df[weight_name]
+    return (d * w).sum() / w.sum() # where (d * w).sum() is the number of students who passed per bracket
+                                   # where w.sum() is the total number of students per bracket
+
+grp_type_means_mathrate = round(sch_type.apply(proportion, "Proportion of Math Passers (%)", "Number of students"), 2)
+grp_type_means_rdgrate = round(sch_type.apply(proportion, "Proportion of Reading Passers (%)", "Number of students"), 2)
+grp_type_means_overallrate = round(sch_type.apply(proportion, "Proportion of Overall Passers (%)", "Number of students"),2)
+```
+
+to summarise results, the statistics were put in a dataframe.
+
+```python
+# create dataframe using weighted averages (accounting for different sizes of school types)
+sch_type_comparison = pd.DataFrame({"Wtd Average Math Score (%)": grp_type_means_mathscore,
+                                  "Wtd Average Reading Score (%)": grp_type_means_rdgscore,
+                                  "Wtd Ave Proportion of Math Passers (%)": grp_type_means_mathrate,
+                                  "Wtd Ave Proportion of Reading Passers (%)": grp_type_means_rdgrate,
+                                  "Wtd Ave Proportion of Overall Passers (%)": grp_type_means_overallrate})
+
+sch_type_comparison
+```
