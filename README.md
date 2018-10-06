@@ -13,6 +13,30 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 ```
 
+Customised functions for measuring ordinary averages, weighted averages, and proportions were developed
+
+```python
+# Customised Functions
+
+# get average score for math for each grade by school
+def avgscore(df, exam_score):
+    e = df[exam_score]
+    return round(e.mean(),2)
+
+# weighted averages for reading and math scores
+def wavg(df,ave_name,weight_name):
+    d = df[ave_name]
+    w = df[weight_name]
+    return round(((d * w).sum() / w.sum()),2)
+
+# proportion of students who passed the math and the reading exams, and both
+def proportion(df,proportion_name,weight_name):
+    d = df[proportion_name]
+    w = df[weight_name]
+    return round(((d * w).sum() / w.sum()),2) # where (d * w).sum() is the number of students who passed per bracket
+                                              # where w.sum() is the total number of students per bracket
+```                                              
+
 The data came from two files: `schools_complete.csv` and `students_complete.csv`.
 
 ```python
@@ -60,7 +84,8 @@ To get the overall passing rate, the number of students who passed both Math and
 
 ```python
 # number of students who passed both math and reading tests (overall passing rate)
-both_passers = len(school_data_complete.loc[(school_data_complete["reading_score"] >= 70) & (school_data_complete["math_score"] >= 70)])
+both_passers = len(school_data_complete.loc[(school_data_complete["reading_score"] >= 70) & 
+                                            (school_data_complete["math_score"] >= 70)])
 pct_both_passers = round(((both_passers / no_students) * 100),2)
 ```
 
@@ -90,7 +115,7 @@ score_math_v_rdg = stats.ttest_ind(a = school_data_complete["math_score"],
 
 rate_math_v_rdg = stats.ttest_ind(a = school_data_complete["math_score"] >= 70, 
                                   b = school_data_complete["reading_score"] >= 70, 
-                                   equal_var=False)
+                                  equal_var=False)
 
 print("ave scores: " + str(score_math_v_rdg), "\nproportion of passers: " + str(rate_math_v_rdg))
 ```
@@ -101,7 +126,7 @@ After getting the district overview, the next step was to generate information a
 
 ```python
 # group the data by school name and type
-school_grped2 = school_data_complete.groupby(["school_name","type"]) # group schools by name
+school_grped2 = school_data_complete.groupby(["school_name","type"]) # group schools by name and by type
 ```
 
 The basic information per school were then generated, including the number of students, the budget, the budget per student, and the average scores for each subject. Getting the average scores per subject involved dividing the sum of scores by the number of students per school. 
@@ -109,8 +134,8 @@ The basic information per school were then generated, including the number of st
 ```python
 # descriptive statistics
 no_students_per_sch = school_grped2["school_name"].count() # number of students per school
-tot_dist_sch_budget = school_grped2["budget"].mean() # total education budget per school
-per_student_budget = tot_dist_sch_budget / no_students_per_sch
+tot_sch_budget = school_grped2["budget"].mean() # total education budget per school
+per_student_budget = tot_sch_budget / no_students_per_sch
 sch_ave_math_score = round((school_grped2["math_score"].sum() / no_students_per_sch),2) # school average math score
 sch_ave_rdg_score = round((school_grped2["reading_score"].sum() / no_students_per_sch),2) # school average reading score
 ```
@@ -129,7 +154,8 @@ To then determine the overall passing rate per school, the number of students wh
 
 ```python
 # filter raw data for students who passed both math and reading tests
-sch_passers = school_data_complete.loc[(school_data_complete["math_score"] >= 70) & (school_data_complete["reading_score"] >= 70)]
+sch_passers = school_data_complete.loc[(school_data_complete["math_score"] >= 70) & 
+                                       (school_data_complete["reading_score"] >= 70)]
 sch_passers_grped = sch_passers.groupby(["school_name"])
 pct_sch_overall_passers = round(((sch_passers_grped["student_name"].count() / no_students_per_sch) * 100),2)
 ```
@@ -139,7 +165,7 @@ A summary of results were generated per school by putting all the statistics int
 ```python
 # summary per school
 summary_school = pd.DataFrame({"Number of students": no_students_per_sch,
-                               "Budget (USD)": tot_dist_sch_budget.map("{:,.2f}".format),
+                               "Budget (USD)": tot_sch_budget.map("{:,.2f}".format),
                                "Budget per Student (USD)": per_student_budget,
                                "Average Math Score (%)": sch_ave_math_score,
                                "Average Reading Score (%)": sch_ave_rdg_score,
@@ -212,13 +238,16 @@ Performance per school in the Math exam was then displayed by grade. A dataframe
 
 ```python
 # get average score for math for each grade by school
-math_09_ave = round((grade_09.groupby("school_name")["math_score"].mean()),2)
-math_10_ave = round((grade_10.groupby("school_name")["math_score"].mean()),2)
-math_11_ave = round((grade_11.groupby("school_name")["math_score"].mean()),2)
-math_12_ave = round((grade_12.groupby("school_name")["math_score"].mean()),2)
+math_09_ave = grade_09.groupby("school_name").apply(avgscore, "math_score")
+math_10_ave = grade_10.groupby("school_name").apply(avgscore, "math_score")
+math_11_ave = grade_11.groupby("school_name").apply(avgscore, "math_score")
+math_12_ave = grade_12.groupby("school_name").apply(avgscore, "math_score")
 
 # merge series to dataframe
-math_df = pd.DataFrame({"9th Grade Math Score (%)": math_09_ave, "10th Grade Math Score (%)": math_10_ave, "11th Grade Math Score (%)": math_11_ave, "12th Grade Math Score (%)": math_12_ave})                                 
+math_df = pd.DataFrame({"9th Grade Math Score (%)": math_09_ave, 
+                        "10th Grade Math Score (%)": math_10_ave, 
+                        "11th Grade Math Score (%)": math_11_ave, 
+                        "12th Grade Math Score (%)": math_12_ave})                                 
 math_df
 ```
 
@@ -237,13 +266,16 @@ The same process of summarising and visualising scores was implemented for the R
 
 ```python
 # get average score for reading for each grade by school
-rdg_09_ave = round((grade_09.groupby("school_name")["reading_score"].mean()),2)
-rdg_10_ave = round((grade_10.groupby("school_name")["reading_score"].mean()),2)
-rdg_11_ave = round((grade_11.groupby("school_name")["reading_score"].mean()),2)
-rdg_12_ave = round((grade_12.groupby("school_name")["reading_score"].mean()),2)
+rdg_09_ave = grade_09.groupby("school_name").apply(avgscore, "reading_score")
+rdg_10_ave = grade_10.groupby("school_name").apply(avgscore, "reading_score")
+rdg_11_ave = grade_11.groupby("school_name").apply(avgscore, "reading_score")
+rdg_12_ave = grade_12.groupby("school_name").apply(avgscore, "reading_score")
 
 # merge series to dataframe
-rdg_df = pd.DataFrame({"9th Grade Reading Score (%)": rdg_09_ave, "10th Grade Reading Score (%)": rdg_10_ave, "11th Grade Reading Score (%)": rdg_11_ave, "12th Grade Reading Score (%)": rdg_12_ave})                                 
+rdg_df = pd.DataFrame({"9th Grade Reading Score (%)": rdg_09_ave, 
+                       "10th Grade Reading Score (%)": rdg_10_ave, 
+                       "11th Grade Reading Score (%)": rdg_11_ave, 
+                       "12th Grade Reading Score (%)": rdg_12_ave})                                 
 rdg_df
 
 # plot the Reading average scores by grade
@@ -281,29 +313,16 @@ budget_rate_grped = budget_rates.groupby("Budget Bracket (USD)")
 To calculate the average scores per budget class, it is important to incorporate weights because the school budget classes had different population sizes. To get the weighted averages, the function `wavg` was used. The weight used was the `Number of students`.
 
 ```python
-# weighted averages for reading and math scores
-def wavg(df,ave_name,weight_name):
-    d = df[ave_name]
-    w = df[weight_name]
-    return (d * w).sum() / w.sum()
-
-grp_budget_means_mathscore = round(budget_rate_grped.apply(wavg, "Average Math Score (%)", "Number of students"), 2)
-grp_budget_means_rdgscore = round(budget_rate_grped.apply(wavg, "Average Reading Score (%)", "Number of students"), 2)
+grp_budget_means_mathscore = budget_rate_grped.apply(wavg, "Average Math Score (%)", "Number of students")
+grp_budget_means_rdgscore = budget_rate_grped.apply(wavg, "Average Reading Score (%)", "Number of students")
 ```
 
 For the same reason, it was also important to consider school budget class size in calculating the passing rates. The function `proportion` was used for the calculations.
 
 ```python
-# proportion of students who passed the math and the reading exams, and both
-def proportion(df,proportion_name,weight_name):
-    d = df[proportion_name]
-    w = df[weight_name]
-    return (d * w).sum() / w.sum() # where (d * w).sum() is the number of students who passed per bracket
-                                   # where w.sum() is the total number of students per bracket
-
-grp_budget_means_mathrate = round(budget_rate_grped.apply(proportion, "Proportion of Math Passers (%)", "Number of students"), 2)
-grp_budget_means_rdgrate = round(budget_rate_grped.apply(proportion, "Proportion of Reading Passers (%)", "Number of students"), 2)
-grp_budget_means_overallrate = round(budget_rate_grped.apply(proportion, "Proportion of Overall Passers (%)", "Number of students"),2)
+grp_budget_means_mathrate = budget_rate_grped.apply(proportion, "Proportion of Math Passers (%)", "Number of students")
+grp_budget_means_rdgrate = budget_rate_grped.apply(proportion, "Proportion of Reading Passers (%)", "Number of students")
+grp_budget_means_overallrate = budget_rate_grped.apply(proportion, "Proportion of Overall Passers (%)", "Number of students")
 ```
 
 After generating these statistics, it was just a matter of putting them together in a dataframe.
@@ -358,25 +377,13 @@ sch_size_grped = sch_size.groupby("Size Class")
 Determining the relationship between school performance (average scores and passing rates) and school size required weighted averages again because it is important to consider the differences in school population per size category. The weight used here was `number of students`.
 
 ```python 
-# weighted averages for reading, math, and overall
-def wavg(df,ave_name,weight_name):
-    d = df[ave_name]
-    w = df[weight_name]
-    return (d * w).sum() / w.sum()
-
-grp_size_means_mathscore = round(sch_size_grped.apply(wavg, "Average Math Score (%)", "Number of students"), 2)
-grp_size_means_rdgscore = round(sch_size_grped.apply(wavg, "Average Reading Score (%)", "Number of students"), 2)
+grp_size_means_mathscore = sch_size_grped.apply(wavg, "Average Math Score (%)", "Number of students")
+grp_size_means_rdgscore = sch_size_grped.apply(wavg, "Average Reading Score (%)", "Number of students")
 
 # proportion of students who passed the math and the reading exams, and both
-def proportion(df,proportion_name,weight_name):
-    d = df[proportion_name]
-    w = df[weight_name]
-    return (d * w).sum() / w.sum() # where (d * w).sum() is the number of students who passed per bracket
-                                   # where w.sum() is the total number of students per bracket
-
-grp_size_means_mathrate = round(sch_size_grped.apply(proportion, "Proportion of Math Passers (%)", "Number of students"), 2)
-grp_size_means_rdgrate = round(sch_size_grped.apply(proportion, "Proportion of Reading Passers (%)", "Number of students"), 2)
-grp_size_means_overallrate = round(sch_size_grped.apply(proportion, "Proportion of Overall Passers (%)", "Number of students"),2)
+grp_size_means_mathrate = sch_size_grped.apply(proportion, "Proportion of Math Passers (%)", "Number of students")
+grp_size_means_rdgrate = sch_size_grped.apply(proportion, "Proportion of Reading Passers (%)", "Number of students")
+grp_size_means_overallrate = sch_size_grped.apply(proportion, "Proportion of Overall Passers (%)", "Number of students")
 ```
 
 The statistics generated were then placed in a dataframe.
@@ -404,24 +411,13 @@ An initial look at the dataset indicated that charter schools tended to have sma
 
 ```python
 # weighted averages for reading, math, and overall
-def wavg(df,ave_name,weight_name):
-    d = df[ave_name]
-    w = df[weight_name]
-    return (d * w).sum() / w.sum()
-
-grp_type_means_mathscore = round(sch_type.apply(wavg, "Average Math Score (%)", "Number of students"), 2)
-grp_type_means_rdgscore = round(sch_type.apply(wavg, "Average Reading Score (%)", "Number of students"), 2)
+grp_type_means_mathscore = sch_type.apply(wavg, "Average Math Score (%)", "Number of students")
+grp_type_means_rdgscore = sch_type.apply(wavg, "Average Reading Score (%)", "Number of students")
 
 # proportion of students who passed the math and the reading exams, and both
-def proportion(df,proportion_name,weight_name):
-    d = df[proportion_name]
-    w = df[weight_name]
-    return (d * w).sum() / w.sum() # where (d * w).sum() is the number of students who passed per bracket
-                                   # where w.sum() is the total number of students per bracket
-
-grp_type_means_mathrate = round(sch_type.apply(proportion, "Proportion of Math Passers (%)", "Number of students"), 2)
-grp_type_means_rdgrate = round(sch_type.apply(proportion, "Proportion of Reading Passers (%)", "Number of students"), 2)
-grp_type_means_overallrate = round(sch_type.apply(proportion, "Proportion of Overall Passers (%)", "Number of students"),2)
+grp_type_means_mathrate = sch_type.apply(proportion, "Proportion of Math Passers (%)", "Number of students")
+grp_type_means_rdgrate = sch_type.apply(proportion, "Proportion of Reading Passers (%)", "Number of students")
+grp_type_means_overallrate = sch_type.apply(proportion, "Proportion of Overall Passers (%)", "Number of students")
 ```
 
 To summarise results, the statistics were put in a dataframe.
